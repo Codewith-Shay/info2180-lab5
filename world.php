@@ -1,0 +1,79 @@
+<?php
+$host = 'localhost';
+$username = 'lab5_user';
+$password = 'password123';
+$dbname = 'world';
+
+$conn = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+// Exercise 3: read the country from the query string (empty = all countries).
+$country = isset($_GET['country']) ? trim($_GET['country']) : '';
+
+// Exercise 5: ?lookup=cities returns the cities of the matching country instead.
+$lookup = isset($_GET['lookup']) ? trim($_GET['lookup']) : '';
+
+// Prepared statements keep user input out of the SQL (prevents SQL injection).
+$param = '%' . $country . '%';
+
+if ($lookup === 'cities') {
+    $stmt = $conn->prepare(
+        "SELECT c.name, c.district, c.population
+         FROM cities c
+         JOIN countries cs ON c.country_code = cs.code
+         WHERE cs.name LIKE :country
+         ORDER BY c.population DESC"
+    );
+    $stmt->execute([':country' => $param]);
+    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    ?>
+    <?php if (count($results) === 0): ?>
+        <p>No cities found.</p>
+    <?php else: ?>
+        <table>
+            <thead>
+                <tr><th>Name</th><th>District</th><th>Population</th></tr>
+            </thead>
+            <tbody>
+            <?php foreach ($results as $row): ?>
+                <tr>
+                    <td><?= htmlspecialchars($row['name']) ?></td>
+                    <td><?= htmlspecialchars($row['district']) ?></td>
+                    <td><?= htmlspecialchars($row['population']) ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
+    <?php
+} else {
+    // Exercise 4: countries shown in an HTML table.
+    $stmt = $conn->prepare(
+        "SELECT name, continent, independence_year, head_of_state
+         FROM countries
+         WHERE name LIKE :country"
+    );
+    $stmt->execute([':country' => $param]);
+    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    ?>
+    <?php if (count($results) === 0): ?>
+        <p>No countries found.</p>
+    <?php else: ?>
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Continent</th><th>Independence</th><th>Head of State</th></tr>
+            </thead>
+            <tbody>
+            <?php foreach ($results as $row): ?>
+                <tr>
+                    <td><?= htmlspecialchars($row['name']) ?></td>
+                    <td><?= htmlspecialchars($row['continent']) ?></td>
+                    <td><?= htmlspecialchars($row['independence_year'] ?? '') ?></td>
+                    <td><?= htmlspecialchars($row['head_of_state'] ?? '') ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
+    <?php
+}
